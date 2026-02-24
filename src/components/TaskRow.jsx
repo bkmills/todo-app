@@ -1,6 +1,20 @@
 import { formatDate, isoToDateInputValue, dateInputValueToIso } from "../utils/dateUtils";
 
-export default function TaskRow({ task, onToggle, onDelete, onUpdateDueDate }) {
+export default function TaskRow({
+  task,
+  onToggle,
+  onDelete,
+  onUpdateDueDate,
+  draggable,
+  isDragging,
+  isDragBefore,
+  isDragAfter,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onDragEnd,
+}) {
   function handleDueDateChange(e) {
     if (!e.target.value) return;
     onUpdateDueDate(task.id, dateInputValueToIso(e.target.value));
@@ -12,8 +26,40 @@ export default function TaskRow({ task, onToggle, onDelete, onUpdateDueDate }) {
     }
   }
 
+  const dropStyle =
+    isDragBefore
+      ? { boxShadow: "inset 0 2px 0 0 #3b82f6" }
+      : isDragAfter
+      ? { boxShadow: "inset 0 -2px 0 0 #3b82f6" }
+      : undefined;
+
   return (
-    <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+    <tr
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      style={dropStyle}
+      className={`border-b border-gray-100 transition-colors${
+        isDragging
+          ? " opacity-40 bg-blue-50"
+          : isDragBefore || isDragAfter
+          ? " bg-blue-50"
+          : " hover:bg-gray-50"
+      }`}
+    >
+      {/* Priority */}
+      <td className="py-3 px-4 text-sm text-gray-400 tabular-nums whitespace-nowrap">
+        {draggable && (
+          <span className="mr-1.5 text-gray-300 cursor-grab select-none">
+            ⠿
+          </span>
+        )}
+        {task.priority}
+      </td>
+
       {/* Checkbox + Task Name */}
       <td className="py-3 px-4">
         <div className="flex items-center gap-3">

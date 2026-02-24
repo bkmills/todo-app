@@ -6,7 +6,7 @@ import TaskList from "./components/TaskList";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("todo");
-  const { tasks, addTask, deleteTask, toggleDone, updateDueDate } = useTasks();
+  const { tasks, addTask, deleteTask, toggleDone, updateDueDate, reorderTask } = useTasks();
 
   const todoTasks = tasks.filter((t) => !t.done);
   const doneTasks = tasks.filter((t) => t.done);
@@ -31,6 +31,7 @@ export default function App() {
             onToggle={toggleDone}
             onDelete={deleteTask}
             onUpdateDueDate={updateDueDate}
+            onReorder={reorderTask}
             emptyMessage={
               activeTab === "todo"
                 ? "No tasks yet — add one above!"
