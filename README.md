@@ -11,6 +11,9 @@ A clean, interactive to-do list built with React, Vite, and Tailwind CSS. Tasks 
 - Editable due dates per task
 - Timestamps for when each task was added and completed
 - Delete tasks from either tab
+- **Priority column** — tasks are numbered sequentially per tab; remaining tasks renumber automatically when one is completed or deleted
+- **Drag-and-drop reordering** — drag any row up or down to reprioritize; grab the ⠿ handle next to the priority number
+- **Sortable columns** — click any column header to sort ascending or descending (↑↓); drag-and-drop is available when sorted by priority
 - Data persists across page reloads via localStorage
 
 ## Tech Stack
