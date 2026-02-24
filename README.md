@@ -1,6 +1,6 @@
 # Todo App
 
-**Live demo: [todo-list-app.vercel.app](https://todo-list-app.vercel.app)**
+**Live demo: [todo-list-app.vercel.app](https://todo-list-app.vercel.app)** · **[GitHub](https://github.com/bkmills/todo-app)**
 
 A clean, interactive to-do list built with React, Vite, and Tailwind CSS. Tasks persist across sessions via localStorage.
 
