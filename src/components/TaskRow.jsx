@@ -5,6 +5,14 @@ export default function TaskRow({
   onToggle,
   onDelete,
   onUpdateDueDate,
+  onAddSubtask,
+  onEditStart,
+  onEditCommit,
+  onEditCancel,
+  isEditing,
+  editText,
+  onEditChange,
+  showDateDone,
   draggable,
   isDragging,
   isDragBefore,
@@ -50,17 +58,12 @@ export default function TaskRow({
           : " hover:bg-gray-50"
       }`}
     >
-      {/* Priority */}
       <td className="py-3 px-4 text-sm text-gray-400 tabular-nums whitespace-nowrap">
         {draggable && (
-          <span className="mr-1.5 text-gray-300 cursor-grab select-none">
-            ⠿
-          </span>
+          <span className="mr-1.5 text-gray-300 cursor-grab select-none">⠿</span>
         )}
         {task.priority}
       </td>
-
-      {/* Checkbox + Task Name */}
       <td className="py-3 px-4">
         <div className="flex items-center gap-3">
           <input
@@ -69,22 +72,31 @@ export default function TaskRow({
             onChange={() => onToggle(task.id)}
             className="w-4 h-4 accent-blue-600 cursor-pointer"
           />
-          <span
-            className={`text-sm ${
-              task.done ? "line-through text-gray-400" : "text-gray-800"
-            }`}
-          >
-            {task.name}
-          </span>
+          {isEditing ? (
+            <input
+              autoFocus
+              value={editText}
+              onChange={(e) => onEditChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") onEditCommit();
+                if (e.key === "Escape") onEditCancel();
+              }}
+              className="flex-1 text-sm px-2 py-0.5 border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+          ) : (
+            <span
+              className={`text-sm ${
+                task.done ? "line-through text-gray-400" : "text-gray-800"
+              }`}
+            >
+              {task.name}
+            </span>
+          )}
         </div>
       </td>
-
-      {/* Date Added */}
-      <td className="py-3 px-4 text-sm text-gray-500 whitespace-nowrap">
+      <td className="hidden sm:table-cell py-3 px-4 text-sm text-gray-500 whitespace-nowrap">
         {formatDate(task.dateAdded)}
       </td>
-
-      {/* Date Due */}
       <td className="py-3 px-4">
         <input
           type="date"
@@ -93,21 +105,58 @@ export default function TaskRow({
           className="text-sm text-gray-700 border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-400"
         />
       </td>
-
-      {/* Date Done */}
-      <td className="py-3 px-4 text-sm text-gray-500 whitespace-nowrap">
-        {task.dateDone ? formatDate(task.dateDone) : "—"}
-      </td>
-
-      {/* Delete */}
-      <td className="py-3 px-4 text-right">
-        <button
-          onClick={handleDelete}
-          className="text-gray-400 hover:text-red-500 transition-colors text-lg leading-none"
-          aria-label="Delete task"
-        >
-          ×
-        </button>
+      {showDateDone && (
+        <td className="hidden sm:table-cell py-3 px-4 text-sm text-gray-500 whitespace-nowrap">
+          {task.dateDone ? formatDate(task.dateDone) : "—"}
+        </td>
+      )}
+      <td className="py-3 px-4">
+        <div className="flex items-center justify-end gap-2">
+          {isEditing ? (
+            <>
+              <button
+                onClick={onEditCommit}
+                className="text-green-500 hover:text-green-700 transition-colors text-base leading-none"
+                aria-label="Save"
+              >
+                ✓
+              </button>
+              <button
+                onClick={onEditCancel}
+                className="text-gray-400 hover:text-gray-600 transition-colors text-lg leading-none"
+                aria-label="Cancel edit"
+              >
+                ×
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={onEditStart}
+                className="text-gray-300 hover:text-blue-500 transition-colors text-sm leading-none"
+                aria-label="Edit task"
+              >
+                ✎
+              </button>
+              {!task.done && (
+                <button
+                  onClick={onAddSubtask}
+                  className="text-gray-300 hover:text-blue-500 transition-colors text-lg leading-none"
+                  aria-label="Add subtask"
+                >
+                  +
+                </button>
+              )}
+              <button
+                onClick={handleDelete}
+                className="text-gray-400 hover:text-red-500 transition-colors text-lg leading-none"
+                aria-label="Delete task"
+              >
+                ×
+              </button>
+            </>
+          )}
+        </div>
       </td>
     </tr>
   );

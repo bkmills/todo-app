@@ -6,11 +6,12 @@ import TaskList from "./components/TaskList";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("todo");
-  const { tasks, addTask, deleteTask, toggleDone, updateDueDate, reorderTask } = useTasks();
+  const { tasks, addTask, addSubtask, deleteTask, toggleDone, updateDueDate, reorderTask, renameTask } = useTasks();
 
-  const todoTasks = tasks.filter((t) => !t.done);
-  const doneTasks = tasks.filter((t) => t.done);
-  const visibleTasks = activeTab === "todo" ? todoTasks : doneTasks;
+  const counts = {
+    todo: tasks.filter((t) => !t.done && !t.parentId).length,
+    done: tasks.filter((t) => t.done && !t.parentId).length,
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -23,15 +24,18 @@ export default function App() {
           <TabBar
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            counts={{ todo: todoTasks.length, done: doneTasks.length }}
+            counts={counts}
           />
 
           <TaskList
-            tasks={visibleTasks}
+            tasks={tasks}
+            activeTab={activeTab}
             onToggle={toggleDone}
             onDelete={deleteTask}
             onUpdateDueDate={updateDueDate}
             onReorder={reorderTask}
+            onAddSubtask={addSubtask}
+            onRename={renameTask}
             emptyMessage={
               activeTab === "todo"
                 ? "No tasks yet — add one above!"

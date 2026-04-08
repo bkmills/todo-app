@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import TaskRow from "./TaskRow";
+import SubtaskRow from "./SubtaskRow";
 
-const COLUMNS = [
+const ALL_COLUMNS = [
   { key: "priority", label: "#" },
   { key: "task", label: "Task" },
-  { key: "dateAdded", label: "Date Added" },
-  { key: "dateDue", label: "Date Due" },
-  { key: "dateDone", label: "Date Done" },
+  { key: "dateAdded", label: "Added", mobileHide: true },
+  { key: "dateDue", label: "Due" },
+  { key: "dateDone", label: "Done", mobileHide: true, doneOnly: true },
   { key: null, label: "" },
 ];
 
@@ -45,22 +46,32 @@ function sortTasks(tasks, column, direction) {
 
 export default function TaskList({
   tasks,
+  activeTab,
   onToggle,
   onDelete,
   onUpdateDueDate,
   onReorder,
+  onAddSubtask,
+  onRename,
   emptyMessage,
 }) {
-  const [sortConfig, setSortConfig] = useState({
-    column: "priority",
-    direction: "asc",
-  });
+  const [sortConfig, setSortConfig] = useState({ column: "priority", direction: "asc" });
   const [draggedId, setDraggedId] = useState(null);
-  const [dragOver, setDragOver] = useState(null); // { id, position: 'before'|'after' }
+  const [dragOver, setDragOver] = useState(null);
+  const [addingSubtaskFor, setAddingSubtaskFor] = useState(null);
+  const [subtaskName, setSubtaskName] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState("");
 
-  // Drag-and-drop only makes sense when viewing priority order ascending
+  const columns = ALL_COLUMNS.filter((c) => !c.doneOnly || activeTab === "done");
   const isDragEnabled =
     sortConfig.column === "priority" && sortConfig.direction === "asc";
+
+  // Top-level tasks only, filtered to the active tab
+  const topLevel = tasks.filter(
+    (t) => !t.parentId && (activeTab === "todo" ? !t.done : t.done)
+  );
+  const sortedTopLevel = sortTasks(topLevel, sortConfig.column, sortConfig.direction);
 
   function handleSort(colKey) {
     if (!colKey) return;
@@ -71,7 +82,9 @@ export default function TaskList({
     );
   }
 
-  function handleDragStart(id) {
+  function handleDragStart(e, id) {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", id);
     setDraggedId(id);
   }
 
@@ -93,17 +106,14 @@ export default function TaskList({
 
   function handleDrop(e, id) {
     e.preventDefault();
-    if (draggedId && draggedId !== id) {
+    const dragged = e.dataTransfer.getData("text/plain");
+    if (dragged && dragged !== id) {
       if (dragOver?.position === "after") {
-        // Insert after target: find next item in priority-sorted order
-        const prioritySorted = [...tasks].sort(
-          (a, b) => (a.priority ?? 0) - (b.priority ?? 0)
-        );
-        const idx = prioritySorted.findIndex((t) => t.id === id);
-        const nextId = prioritySorted[idx + 1]?.id ?? null;
-        onReorder(draggedId, nextId);
+        const idx = sortedTopLevel.findIndex((t) => t.id === id);
+        const nextId = sortedTopLevel[idx + 1]?.id ?? null;
+        onReorder(dragged, nextId);
       } else {
-        onReorder(draggedId, id);
+        onReorder(dragged, id);
       }
     }
     setDraggedId(null);
@@ -120,66 +130,164 @@ export default function TaskList({
     return sortConfig.direction === "asc" ? " ↑" : " ↓";
   }
 
-  const sortedTasks = sortTasks(tasks, sortConfig.column, sortConfig.direction);
+  function handleAddSubtaskSubmit(e, parentId) {
+    e.preventDefault();
+    if (!subtaskName.trim()) return;
+    onAddSubtask(parentId, subtaskName.trim());
+    setSubtaskName("");
+    setAddingSubtaskFor(null);
+  }
+
+  function toggleAddingFor(taskId) {
+    if (addingSubtaskFor === taskId) {
+      setAddingSubtaskFor(null);
+      setSubtaskName("");
+    } else {
+      setAddingSubtaskFor(taskId);
+      setSubtaskName("");
+    }
+  }
+
+  function startEdit(task) {
+    setEditingId(task.id);
+    setEditText(task.name);
+  }
+
+  function commitEdit(id) {
+    if (editText.trim()) onRename(id, editText.trim());
+    setEditingId(null);
+    setEditText("");
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditText("");
+  }
+
+  // Number of "middle" columns for the subtask input row colSpan
+  const subtaskColSpan = columns.length - 2;
 
   return (
     <div className="overflow-x-auto rounded-lg border border-gray-200">
       <table className="min-w-full">
         <thead className="bg-gray-50">
           <tr>
-            {COLUMNS.map((col) => (
+            {columns.map((col) => (
               <th
                 key={col.key ?? "actions"}
                 onClick={() => handleSort(col.key)}
                 className={`py-3 px-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider${
-                  col.key
-                    ? " cursor-pointer select-none hover:text-gray-700"
-                    : ""
-                }`}
+                  col.key ? " cursor-pointer select-none hover:text-gray-700" : ""
+                }${col.mobileHide ? " hidden sm:table-cell" : ""}`}
               >
                 {col.label}
                 {col.key && (
-                  <span className="text-gray-400">
-                    {getSortIndicator(col.key)}
-                  </span>
+                  <span className="text-gray-400">{getSortIndicator(col.key)}</span>
                 )}
               </th>
             ))}
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-100">
-          {sortedTasks.length === 0 ? (
+          {sortedTopLevel.length === 0 ? (
             <tr>
               <td
-                colSpan={COLUMNS.length}
+                colSpan={columns.length}
                 className="py-12 text-center text-gray-400 text-sm"
               >
                 {emptyMessage}
               </td>
             </tr>
           ) : (
-            sortedTasks.map((task) => (
-              <TaskRow
-                key={task.id}
-                task={task}
-                onToggle={onToggle}
-                onDelete={onDelete}
-                onUpdateDueDate={onUpdateDueDate}
-                draggable={isDragEnabled}
-                isDragging={draggedId === task.id}
-                isDragBefore={
-                  dragOver?.id === task.id && dragOver?.position === "before"
-                }
-                isDragAfter={
-                  dragOver?.id === task.id && dragOver?.position === "after"
-                }
-                onDragStart={() => handleDragStart(task.id)}
-                onDragOver={(e) => handleDragOver(e, task.id)}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, task.id)}
-                onDragEnd={handleDragEnd}
-              />
-            ))
+            sortedTopLevel.map((task) => {
+              const subtasks = tasks.filter((t) => t.parentId === task.id);
+              return (
+                <Fragment key={task.id}>
+                  <TaskRow
+                    task={task}
+                    onToggle={onToggle}
+                    onDelete={onDelete}
+                    onUpdateDueDate={onUpdateDueDate}
+                    onAddSubtask={() => toggleAddingFor(task.id)}
+                    onEditStart={() => startEdit(task)}
+                    onEditCommit={() => commitEdit(task.id)}
+                    onEditCancel={cancelEdit}
+                    isEditing={editingId === task.id}
+                    editText={editText}
+                    onEditChange={setEditText}
+                    showDateDone={activeTab === "done"}
+                    draggable={isDragEnabled}
+                    isDragging={draggedId === task.id}
+                    isDragBefore={dragOver?.id === task.id && dragOver?.position === "before"}
+                    isDragAfter={dragOver?.id === task.id && dragOver?.position === "after"}
+                    onDragStart={(e) => handleDragStart(e, task.id)}
+                    onDragOver={(e) => handleDragOver(e, task.id)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, task.id)}
+                    onDragEnd={handleDragEnd}
+                  />
+                  {subtasks.map((sub) => (
+                    <SubtaskRow
+                      key={sub.id}
+                      subtask={sub}
+                      onToggle={onToggle}
+                      onDelete={onDelete}
+                      onEditStart={() => startEdit(sub)}
+                      onEditCommit={() => commitEdit(sub.id)}
+                      onEditCancel={cancelEdit}
+                      isEditing={editingId === sub.id}
+                      editText={editText}
+                      onEditChange={setEditText}
+                      showDateDone={activeTab === "done"}
+                    />
+                  ))}
+                  {addingSubtaskFor === task.id && (
+                    <tr className="bg-blue-50">
+                      <td className="py-2 px-4 text-right text-gray-300 text-sm">↳</td>
+                      <td className="py-2 px-4 pl-6" colSpan={subtaskColSpan}>
+                        <form
+                          onSubmit={(e) => handleAddSubtaskSubmit(e, task.id)}
+                          className="flex items-center gap-2"
+                        >
+                          <input
+                            autoFocus
+                            value={subtaskName}
+                            onChange={(e) => setSubtaskName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Escape") {
+                                setAddingSubtaskFor(null);
+                                setSubtaskName("");
+                              }
+                            }}
+                            placeholder="Subtask name…"
+                            className="flex-1 px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+                          />
+                          <button
+                            type="submit"
+                            disabled={!subtaskName.trim()}
+                            className="px-2 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40 transition-colors"
+                          >
+                            Add
+                          </button>
+                        </form>
+                      </td>
+                      <td className="py-2 px-4 text-right">
+                        <button
+                          onClick={() => {
+                            setAddingSubtaskFor(null);
+                            setSubtaskName("");
+                          }}
+                          className="text-gray-400 hover:text-gray-600 transition-colors text-lg leading-none"
+                          aria-label="Cancel"
+                        >
+                          ×
+                        </button>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })
           )}
         </tbody>
       </table>

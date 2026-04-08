@@ -30,3 +30,13 @@ export function dateInputValueToIso(val) {
   if (!val) return "";
   return new Date(`${val}T12:00:00.000Z`).toISOString();
 }
+
+/**
+ * Returns true if the given ISO date is today or in the past.
+ */
+export function isOverdue(iso) {
+  if (!iso) return false;
+  const today = new Date();
+  today.setUTCHours(12, 0, 0, 0);
+  return new Date(iso) <= today;
+}
